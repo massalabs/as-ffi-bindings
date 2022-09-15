@@ -113,7 +113,6 @@
 <span id="113">113</span>
 <span id="114">114</span>
 <span id="115">115</span>
-<span id="116">116</span>
 </pre><pre class="rust"><code><span class="kw">use super</span>::{Env, Memory, Read, Write};
 <span class="kw">use </span>std::convert::{TryFrom, TryInto};
 <span class="kw">use </span>wasmer::{Array, FromToNativeWasmType, Value, WasmPtr};
@@ -210,8 +209,7 @@
         <span class="prelude-val">Some</span>(mem) =&gt; mem.view::&lt;u8&gt;(),
         <span class="kw">_ </span>=&gt; <span class="macro">anyhow::bail!</span>(<span class="string">&quot;Uninitialized memory&quot;</span>),
     };
-    <span class="comment">// We count in 32 so we have to devide by 2
-    </span><span class="kw">let </span>from = usize::try_from(offset)<span class="question-mark">? </span>/ <span class="number">2</span>;
+    <span class="kw">let </span>from = usize::try_from(offset)<span class="question-mark">?</span>;
     <span class="kw">for </span>(bytes, cell) <span class="kw">in </span>value.iter().zip(view[from..from + value.len()].iter()) {
         cell.set(<span class="kw-2">*</span>bytes);
     }
@@ -231,4 +229,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="as_ffi_bindings" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (17cbdfd07 2022-09-13)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="as_ffi_bindings" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
