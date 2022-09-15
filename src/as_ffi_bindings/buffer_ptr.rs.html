@@ -113,6 +113,17 @@
 <span id="113">113</span>
 <span id="114">114</span>
 <span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
 </pre><pre class="rust"><code><span class="kw">use super</span>::{Env, Memory, Read, Write};
 <span class="kw">use </span>std::convert::{TryFrom, TryInto};
 <span class="kw">use </span>wasmer::{Array, FromToNativeWasmType, Value, WasmPtr};
@@ -209,10 +220,21 @@
         <span class="prelude-val">Some</span>(mem) =&gt; mem.view::&lt;u8&gt;(),
         <span class="kw">_ </span>=&gt; <span class="macro">anyhow::bail!</span>(<span class="string">&quot;Uninitialized memory&quot;</span>),
     };
-    <span class="kw">let </span>from = usize::try_from(offset)<span class="question-mark">?</span>;
-    <span class="kw">for </span>(bytes, cell) <span class="kw">in </span>value.iter().zip(view[from..from + value.len()].iter()) {
-        cell.set(<span class="kw-2">*</span>bytes);
+
+    <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;no_thread&quot;</span>) {
+        <span class="kw">let </span>subarray_view = view.subarray(offset, offset + (value.len() <span class="kw">as </span>u32));
+        <span class="comment">// copy_from is unsafe because the caller will need to make sure there are no data races
+        // when copying memory into the view.
+        </span><span class="kw">unsafe </span>{
+            subarray_view.copy_from(value);
+        }
+    } <span class="kw">else </span>{
+        <span class="kw">let </span>from = usize::try_from(offset)<span class="question-mark">?</span>;
+        <span class="kw">for </span>(bytes, cell) <span class="kw">in </span>value.iter().zip(view[from..from + value.len()].iter()) {
+            cell.set(<span class="kw-2">*</span>bytes);
+        }
     }
+
     <span class="prelude-val">Ok</span>(())
 }
 
