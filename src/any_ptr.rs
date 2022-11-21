@@ -1,13 +1,15 @@
+/*
+
 use super::{Env, Memory, Read, Write};
 use crate::{BufferPtr, StringPtr};
 use std::convert::{TryFrom, TryInto};
-use wasmer::{Array, FromToNativeWasmType, Value, WasmPtr};
+use wasmer::{FromToNativeWasmType, Value, WasmPtr};
 
 use crate::tools::export_asr;
 
 // todo: should I implement Any ?
 #[derive(Clone, Copy)]
-pub struct AnyPtr(WasmPtr<u8, Array>);
+pub struct AnyPtr(WasmPtr<u8>);
 pub struct AnyPtrExported {
     pub id: u32,
     pub content: Vec<u8>,
@@ -110,11 +112,14 @@ unsafe impl FromToNativeWasmType for AnyPtr {
 impl Read<Vec<u8>> for AnyPtr {
     fn read(&self, memory: &Memory) -> anyhow::Result<Vec<u8>> {
         let size = self.size(memory)?;
+        /*
         if let Some(buf) = self.0.deref(memory, 0, size * 2) {
             Ok(buf.iter().map(|b| b.get()).collect())
         } else {
             anyhow::bail!("Wrong offset: can't read any object")
         }
+        */
+        todo!()
     }
 
     fn size(&self, memory: &Memory) -> anyhow::Result<u32> {
@@ -226,3 +231,5 @@ fn set_id(offset: u32, id: u32, env: &Env) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+*/

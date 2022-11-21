@@ -1,15 +1,17 @@
-use wasmer::{Function, HostEnvInitError, Instance, LazyInit, Memory, WasmerEnv};
+use wasmer::{Function, Instance, Memory};
 
-#[derive(Clone, Default)]
-pub struct Env {
-    pub memory: LazyInit<Memory>,
-    pub fn_new: Option<Function>,
-    pub fn_pin: Option<Function>,
-    pub fn_unpin: Option<Function>,
-    pub fn_collect: Option<Function>,
+#[derive(Clone)]
+pub struct Env<'a> {
+    pub memory: Memory,
+    pub fn_new: Option<&'a Function>,
+    pub fn_pin: Option<&'a Function>,
+    pub fn_unpin: Option<&'a Function>,
+    pub fn_collect: Option<&'a Function>,
 }
 
-impl Env {
+impl<'a> Env<'a> {
+
+    /*
     pub fn new(
         arg_memory: Memory,
         fn_new: Option<Function>,
@@ -17,22 +19,38 @@ impl Env {
         fn_unpin: Option<Function>,
         fn_collect: Option<Function>,
     ) -> Env {
-        let mut memory = LazyInit::<Memory>::default();
-        memory.initialize(arg_memory);
+        // let mut memory = LazyInit::<Memory>::default();
+        // memory.initialize(arg_memory);
         Env {
-            memory,
+            memory: arg_memory,
             fn_new,
             fn_pin,
             fn_unpin,
             fn_collect,
         }
     }
+    */
 
-    pub fn init(&mut self, instance: &Instance) -> anyhow::Result<()> {
-        Ok(self.init_with_instance(instance)?)
+    // TODO: should impl From<&Instance>
+    /*
+    pub fn init(instance: &Instance) -> anyhow::Result<()> {
+        Ok(init_with_instance(instance)?)
     }
+    */
+
+    pub fn init_with_instance(instance: &'a Instance) -> anyhow::Result<Self> {
+        Ok(Self {
+            memory: instance.exports.get_with_generics("memory")?,
+            fn_new: Some(instance.exports.get_function("__new")?),
+            fn_pin: Some(instance.exports.get_function("__pin")?),
+            fn_unpin: Some(instance.exports.get_function("__unpin")?),
+            fn_collect: Some(instance.exports.get_function("__collect")?)
+        })
+    }
+
 }
 
+/*
 impl WasmerEnv for Env {
     fn init_with_instance(&mut self, instance: &Instance) -> Result<(), HostEnvInitError> {
         let mem: Memory = instance
@@ -55,3 +73,4 @@ impl WasmerEnv for Env {
         Ok(())
     }
 }
+*/

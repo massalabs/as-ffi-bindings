@@ -3,10 +3,10 @@ use crate::tools::export_asr;
 use super::{Env, Memory, Read, Write};
 
 use std::convert::{TryFrom, TryInto};
-use wasmer::{Array, FromToNativeWasmType, Value, WasmPtr};
+use wasmer::{FromToNativeWasmType, Store, Value, WasmPtr};
 
 #[derive(Clone, Copy)]
-pub struct StringPtr(WasmPtr<u16, Array>);
+pub struct StringPtr(WasmPtr<u16>);
 
 impl StringPtr {
     pub fn new(offset: u32) -> Self {
@@ -28,30 +28,33 @@ unsafe impl FromToNativeWasmType for StringPtr {
 }
 
 impl Read<String> for StringPtr {
-    fn read(&self, memory: &Memory) -> anyhow::Result<String> {
-        let size = self.size(memory)?;
+    fn read(&self, memory: &Memory, store: &Store) -> anyhow::Result<String> {
+        let size = self.size(memory, store)?;
         // we need size / 2 because assemblyscript counts bytes
         // while deref considers u16 elements
+        /*
         if let Some(buf) = self.0.deref(memory, 0, size / 2) {
             let input: Vec<u16> = buf.iter().map(|b| b.get()).collect();
             Ok(String::from_utf16_lossy(&input))
         } else {
             anyhow::bail!("Wrong offset: can't read buf")
         }
+        */
+        todo!()
     }
 
-    fn size(&self, memory: &Memory) -> anyhow::Result<u32> {
+    fn size(&self, memory: &Memory, store: &Store) -> anyhow::Result<u32> {
         size(self.0.offset(), memory)
     }
 }
 
 impl Write<String> for StringPtr {
-    fn alloc(value: &String, env: &Env) -> anyhow::Result<Box<StringPtr>> {
+    fn alloc(value: &String, env: &Env, store: &mut Store) -> anyhow::Result<Box<StringPtr>> {
         let new = export_asr!(fn_new, env);
         let size = i32::try_from(value.len())?;
 
         let offset = u32::try_from(
-            match new.call(&[Value::I32(size << 1), Value::I32(1)])?.get(0) {
+            match new.call(store, &[Value::I32(size << 1), Value::I32(1)])?.get(0) {
                 Some(val) => match val.i32() {
                     Some(i) => i,
                     _ => anyhow::bail!("Failed to allocate"),
@@ -63,16 +66,19 @@ impl Write<String> for StringPtr {
 
         // pin
         let pin = export_asr!(fn_pin, env);
-        pin.call(&[Value::I32(offset.try_into()?)])?;
+        pin.call(store, &[Value::I32(offset.try_into()?)])?;
 
         Ok(Box::new(StringPtr::new(offset)))
     }
 
-    fn write(&mut self, value: &String, env: &Env) -> anyhow::Result<Box<StringPtr>> {
+    fn write(&mut self, value: &String, env: &Env, store: &mut Store) -> anyhow::Result<Box<StringPtr>> {
+        /*
         let memory = match env.memory.get_ref() {
             Some(mem) => mem,
             _ => anyhow::bail!("Cannot get memory"),
         };
+        */
+        let memory = &env.memory;
         let prev_size = size(self.offset(), memory)?;
         let new_size = u32::try_from(value.len())? << 1;
         if prev_size == new_size {
@@ -81,31 +87,33 @@ impl Write<String> for StringPtr {
         } else {
             // unpin old ptr
             let unpin = export_asr!(fn_unpin, env);
-            unpin.call(&[Value::I32(self.offset().try_into()?)])?;
+            unpin.call(store, &[Value::I32(self.offset().try_into()?)])?;
 
             // collect
             let collect = export_asr!(fn_collect, env);
-            collect.call(&[])?;
+            collect.call(store, &[])?;
 
             // alloc with new size
-            StringPtr::alloc(value, env)
+            StringPtr::alloc(value, env, store)
         }
     }
 
-    fn free(self, env: &Env) -> anyhow::Result<()> {
+    fn free(self, env: &Env, store: &mut Store) -> anyhow::Result<()> {
         // unpin
         let unpin = export_asr!(fn_unpin, env);
-        unpin.call(&[Value::I32(self.offset().try_into()?)])?;
+        unpin.call(store, &[Value::I32(self.offset().try_into()?)])?;
 
         // collect
         let collect = export_asr!(fn_collect, env);
-        collect.call(&[])?;
+        collect.call(store, &[])?;
         Ok(())
     }
 }
 
 fn write_str(offset: u32, value: &str, env: &Env) -> anyhow::Result<()> {
     let utf16 = value.encode_utf16();
+    // TODO
+    /*
     let view = match env.memory.get_ref() {
         Some(mem) => mem.view::<u16>(),
         _ => anyhow::bail!("Uninitialized memory"),
@@ -115,6 +123,7 @@ fn write_str(offset: u32, value: &str, env: &Env) -> anyhow::Result<()> {
     for (bytes, cell) in utf16.into_iter().zip(view[from..from + value.len()].iter()) {
         cell.set(bytes);
     }
+    */
     Ok(())
 }
 
@@ -122,6 +131,8 @@ fn size(offset: u32, memory: &Memory) -> anyhow::Result<u32> {
     if offset < 4 {
         anyhow::bail!("Wrong offset: less than 2")
     }
+
+    /*
     // read -4 offset
     // https://www.assemblyscript.org/memory.html#internals
     if let Some(cell) = memory.view::<u32>().get(offset as usize / (32 / 8) - 1) {
@@ -129,4 +140,6 @@ fn size(offset: u32, memory: &Memory) -> anyhow::Result<u32> {
     } else {
         anyhow::bail!("Wrong offset: can't read size")
     }
+    */
+    todo!()
 }
