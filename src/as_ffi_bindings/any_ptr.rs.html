@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/any_ptr.rs`."><title>any_ptr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="as_ffi_bindings" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (6b771f6b5 2023-11-15)" data-channel="nightly" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-f06f02fd918e3bb3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/any_ptr.rs`."><title>any_ptr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c67e44d78ab2db17.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="as_ffi_bindings" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (1fdfe1234 2023-12-06)" data-channel="nightly" data-search-js="search-5a66c239c06b3a66.js" data-settings-js="settings-fe03fdc259827cd2.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-77dede896d6ac08e.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -268,7 +268,7 @@
 
     <span class="kw">pub fn </span>deserialize(b: <span class="kw-2">&amp;</span>[u8]) -&gt; anyhow::Result&lt;<span class="self">Self</span>&gt; {
         <span class="kw">if </span>b.len() &lt; <span class="number">4 </span>{
-            <span class="macro">anyhow::bail!</span>(<span class="string">&quot;any pointer to small&quot;</span>)
+            <span class="macro">anyhow::bail!</span>(<span class="string">"any pointer to small"</span>)
         }
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             id: u32::from_be_bytes(b[..<span class="number">4</span>].try_into()<span class="question-mark">?</span>),
@@ -334,7 +334,7 @@
             <span class="kw">let </span>utf16_vec = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>len = ptr_exported.content.len();
                 <span class="kw">if </span>len % <span class="number">2 </span>!= <span class="number">0 </span>{
-                    <span class="macro">anyhow::bail!</span>(<span class="string">&quot;Cannot cast u8 slice into u16&quot;</span>)
+                    <span class="macro">anyhow::bail!</span>(<span class="string">"Cannot cast u8 slice into u16"</span>)
                 }
                 <span class="kw">let </span>c = ptr_exported.content.as_ptr().cast::&lt;u16&gt;();
                 <span class="kw">let </span>a = std::slice::from_raw_parts(c, len / <span class="number">2</span>);
@@ -375,7 +375,7 @@
             wasm_slice.read_slice(<span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(res)
         } <span class="kw">else </span>{
-            <span class="macro">anyhow::bail!</span>(<span class="string">&quot;Wrong offset: can&#39;t read buf&quot;</span>)
+            <span class="macro">anyhow::bail!</span>(<span class="string">"Wrong offset: can't read buf"</span>)
         }
     }
 
@@ -409,7 +409,7 @@
         <span class="comment">/*
         let memory = match env.memory.get_ref() {
             Some(mem) =&gt; mem,
-            _ =&gt; anyhow::bail!(&quot;Cannot get memory&quot;),
+            _ =&gt; anyhow::bail!("Cannot get memory"),
         };
         let prev_size = size(self.offset(), memory)?;
         let new_size = u32::try_from(value.len())?;
@@ -432,7 +432,7 @@
     </span>}
 
     <span class="kw">fn </span>free(<span class="self">self</span>, _env: <span class="kw-2">&amp;</span>Env, _store: <span class="kw-2">&amp;mut </span>Store) -&gt; anyhow::Result&lt;()&gt; {
-        <span class="macro">todo!</span>(<span class="string">&quot;Release the memory from this any&quot;</span>)
+        <span class="macro">todo!</span>(<span class="string">"Release the memory from this any"</span>)
     }
 }
 
@@ -444,7 +444,7 @@
 ) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">let </span>memory = <span class="kw">match </span>env.memory.as_ref() {
         <span class="prelude-val">Some</span>(mem) =&gt; mem,
-        <span class="kw">_ </span>=&gt; <span class="macro">anyhow::bail!</span>(<span class="string">&quot;No Memory in env&quot;</span>),
+        <span class="kw">_ </span>=&gt; <span class="macro">anyhow::bail!</span>(<span class="string">"No Memory in env"</span>),
     };
     <span class="kw">let </span>mem_view = memory.view(store);
     <span class="kw">let </span>from = u64::from(offset);
@@ -458,7 +458,7 @@
     <span class="kw">let </span>ptr = ptr.<span class="number">0</span>.sub_offset(u32_size)<span class="question-mark">?</span>;
     <span class="kw">let </span>slice_len_buf = ptr.slice(<span class="kw-2">&amp;</span>memory_view, u32_size)<span class="question-mark">?</span>.read_to_vec()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(u32::from_ne_bytes(slice_len_buf.try_into().map_err(
-        |v| anyhow::Error::msg(<span class="macro">format!</span>(<span class="string">&quot;Unable to convert vec: {:?} to &amp;[u8; 4]&quot;</span>, v)),
+        |v| anyhow::Error::msg(<span class="macro">format!</span>(<span class="string">"Unable to convert vec: {:?} to &amp;[u8; 4]"</span>, v)),
     )<span class="question-mark">?</span>))
 }
 
@@ -472,13 +472,13 @@
         .slice(<span class="kw-2">&amp;</span>memory_view, mem::size_of::&lt;u32&gt;() <span class="kw">as </span>u32)<span class="question-mark">?
         </span>.read_to_vec()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(u32::from_ne_bytes(slice_len_buf.try_into().map_err(
-        |v| anyhow::Error::msg(<span class="macro">format!</span>(<span class="string">&quot;Unable to convert vec: {:?} to &amp;[u8; 4]&quot;</span>, v)),
+        |v| anyhow::Error::msg(<span class="macro">format!</span>(<span class="string">"Unable to convert vec: {:?} to &amp;[u8; 4]"</span>, v)),
     )<span class="question-mark">?</span>))
 }
 
 <span class="kw">fn </span>set_id(offset: u32, id: u32, _env: <span class="kw-2">&amp;</span>Env, memory: <span class="kw-2">&amp;</span>Memory, store: <span class="kw-2">&amp;</span>Store) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">if </span>offset &lt; <span class="number">8 </span>{
-        <span class="macro">anyhow::bail!</span>(<span class="string">&quot;Wrong offset: less than 8&quot;</span>)
+        <span class="macro">anyhow::bail!</span>(<span class="string">"Wrong offset: less than 8"</span>)
     }
 
     <span class="kw">let </span>mem_view = memory.view(store);
