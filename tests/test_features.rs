@@ -445,3 +445,50 @@ fn read_write_any() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
+/// One page of memory holding two AssemblyScript-style objects:
+/// - at offset 4, an object whose header claims 0xFFFFFFFE bytes;
+/// - at offset 65532, a 4-byte object ("ab" in UTF-16) ending exactly at the end of memory.
+const BOUNDS_WAT: &str = r#"(module
+    (memory (export "memory") 1)
+    (data (i32.const 0) "\fe\ff\ff\ff")
+    (data (i32.const 65528) "\04\00\00\00a\00b\00"))"#;
+
+fn bounds_instance() -> Result<(Store, wasmer::Memory), Box<dyn Error>> {
+    let mut store = Store::default();
+    let module = Module::new(&store, BOUNDS_WAT)?;
+    let instance = Instance::new(&mut store, &module, &imports! {})?;
+    let memory = instance.exports.get_memory("memory")?.clone();
+    Ok((store, memory))
+}
+
+#[test]
+fn read_rejects_header_larger_than_memory() -> Result<(), Box<dyn Error>> {
+    // The claimed length must be checked against guest memory before the host buffer is
+    // allocated, so the readers fail with the usual out-of-bounds error.
+    let (store, memory) = bounds_instance()?;
+
+    let err = StringPtr::new(4).read(&memory, &store).unwrap_err();
+    assert_eq!(err.to_string(), "memory access out of bounds");
+    let err = BufferPtr::new(4).read(&memory, &store).unwrap_err();
+    assert_eq!(err.to_string(), "memory access out of bounds");
+    let err = AnyPtr::new(4).read(&memory, &store).unwrap_err();
+    assert_eq!(err.to_string(), "memory access out of bounds");
+    Ok(())
+}
+
+#[test]
+fn read_accepts_object_ending_at_memory_end() -> Result<(), Box<dyn Error>> {
+    let (store, memory) = bounds_instance()?;
+
+    assert_eq!(StringPtr::new(65532).read(&memory, &store)?, "ab");
+    assert_eq!(
+        BufferPtr::new(65532).read(&memory, &store)?,
+        vec![b'a', 0, b'b', 0]
+    );
+    assert_eq!(
+        AnyPtr::new(65532).read(&memory, &store)?,
+        vec![b'a', 0, b'b', 0]
+    );
+    Ok(())
+}

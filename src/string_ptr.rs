@@ -1,4 +1,4 @@
-use crate::tools::{export_asr, export_mem};
+use crate::tools::{check_guest_bounds, export_asr, export_mem};
 
 use super::{Env, Memory, Read, Write};
 
@@ -34,6 +34,7 @@ impl Read<String> for StringPtr {
         let wasm_slice_ = self.0.slice(&memory_view, size);
 
         if let Ok(wasm_slice) = wasm_slice_ {
+            check_guest_bounds(&memory_view, self.offset(), u64::from(size) * 2)?;
             let mut res = vec![0; size as usize];
             wasm_slice.read_slice(&mut res)?;
             Ok(String::from_utf16_lossy(&res))
