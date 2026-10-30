@@ -1,3 +1,7 @@
+// Test binaries link `wasmer-vm`, which needs `__rust_probestack` on x86_64 (see the module).
+#[path = "common/probestack.rs"]
+mod probestack;
+
 use as_ffi_bindings::{abort, AnyPtr, BufferPtr, Env, Read, StringPtr, Write};
 use std::{error::Error, sync::Mutex};
 use wasmer::{
