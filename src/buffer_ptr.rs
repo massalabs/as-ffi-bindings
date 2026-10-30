@@ -3,7 +3,7 @@ use std::convert::{TryFrom, TryInto};
 use std::mem::size_of;
 use wasmer::{AsStoreMut, AsStoreRef, FromToNativeWasmType, Store, WasmPtr};
 
-use crate::tools::{export_asr, export_mem};
+use crate::tools::{check_guest_bounds, export_asr, export_mem};
 
 #[derive(Clone, Copy)]
 pub struct BufferPtr(WasmPtr<u8>);
@@ -33,6 +33,7 @@ impl Read<Vec<u8>> for BufferPtr {
         let memory_view = memory.view(store);
         let wasm_slice_ = self.0.slice(&memory_view, size);
         if let Ok(wasm_slice) = wasm_slice_ {
+            check_guest_bounds(&memory_view, self.offset(), u64::from(size))?;
             let mut res = vec![0; size as usize];
             wasm_slice.read_slice(&mut res)?;
             Ok(res)

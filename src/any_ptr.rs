@@ -5,7 +5,7 @@ use std::mem;
 use std::mem::size_of;
 use wasmer::{AsStoreMut, AsStoreRef, FromToNativeWasmType, Store, WasmPtr};
 
-use crate::tools::export_asr;
+use crate::tools::{check_guest_bounds, export_asr};
 
 // TODO: take a decision concerning `AnyPtr`
 #[derive(Clone, Copy)]
@@ -125,6 +125,7 @@ impl Read<Vec<u8>> for AnyPtr {
         let memory_view = memory.view(store);
         let wasm_slice_ = self.0.slice(&memory_view, size);
         if let Ok(wasm_slice) = wasm_slice_ {
+            check_guest_bounds(&memory_view, self.offset(), u64::from(size))?;
             let mut res = Vec::with_capacity(size as usize * 2);
             res.resize(size as usize, 0);
             wasm_slice.read_slice(&mut res)?;
