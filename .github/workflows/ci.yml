@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, staging, trying ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -10,157 +10,44 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
 
+# Every job uses the toolchain pinned in rust-toolchain.toml: wasmer 4.x needs
+# `__rust_probestack`, which recent compilers no longer provide, so tests do not
+# link on current stable or nightly.
 jobs:
-  # Quick tests on each commit/PR
-  sanity:
+  fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          components: rustfmt
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-
-  check:
-    if: github.ref != 'refs/heads/staging'
-    needs: sanity
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-
-  test:
-    if: github.ref != 'refs/heads/staging'
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build # needed by assert_cmd based tests
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-  doctest:
-    if: github.ref != 'refs/heads/staging'
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --doc
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo fmt --all -- --check
 
   clippy:
-    if: github.ref != 'refs/heads/staging'
-    needs: check
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          components: clippy
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
-
-  # Full cross-platform tests required by bors to merge on main branch
-  full:
-    if: github.ref == 'refs/heads/staging'
-    name: full
-    needs: sanity
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-  build: # quick hack because bors wrongly detect matrix jobs status
-    if: github.ref == 'refs/heads/staging'
-    needs: full
     runs-on: ubuntu-latest
     steps:
-      - run: exit 0
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets --all-features
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test
 
   doc:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          components: rustfmt
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps
-      - uses: JamesIves/github-pages-deploy-action@4.1.7
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo doc --no-deps
+      - uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: target/doc
