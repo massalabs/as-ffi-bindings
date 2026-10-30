@@ -1,4 +1,10 @@
-# AssemblyScript bindings [![cargo version](https://img.shields.io/crates/v/as-ffi-bindings.svg)](https://crates.io/crates/as-ffi-bindings)
+# AssemblyScript bindings
+
+This is the Massa-maintained fork of `as-ffi-bindings`, used by [massa-sc-runtime](https://github.com/massalabs/massa-sc-runtime). It is consumed as a git dependency pinned to a `vX.Y.Z` tag; the `as-ffi-bindings` crate on crates.io is the unmaintained original (wasmer 2) and does not contain these changes.
+
+```toml
+as-ffi-bindings = { git = "https://github.com/massalabs/as-ffi-bindings.git", tag = "v0.5.7" }
+```
 
 Currently, this binding library is compatible with Wasmer, and we are studying on a compatibility with WasmTime. With this helper are able to read, write and use the allocation in your WebAssembly modules compiled from AssemblyScript.
 
