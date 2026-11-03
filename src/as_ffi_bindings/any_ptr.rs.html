@@ -5,7 +5,7 @@
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>std::mem::size_of;
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>wasmer::{AsStoreMut, AsStoreRef, FromToNativeWasmType, Store, WasmPtr};
 <a href=#7 id=7 data-nosnippet>7</a>
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::tools::export_asr;
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::tools::{check_guest_bounds, export_asr};
 <a href=#9 id=9 data-nosnippet>9</a>
 <a href=#10 id=10 data-nosnippet>10</a><span class="comment">// TODO: take a decision concerning `AnyPtr`
 <a href=#11 id=11 data-nosnippet>11</a></span><span class="attr">#[derive(Clone, Copy)]
@@ -125,121 +125,122 @@
 <a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">let </span>memory_view = memory.view(store);
 <a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">let </span>wasm_slice_ = <span class="self">self</span>.<span class="number">0</span>.slice(<span class="kw-2">&amp;</span>memory_view, size);
 <a href=#127 id=127 data-nosnippet>127</a>        <span class="kw">if let </span><span class="prelude-val">Ok</span>(wasm_slice) = wasm_slice_ {
-<a href=#128 id=128 data-nosnippet>128</a>            <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(size <span class="kw">as </span>usize * <span class="number">2</span>);
-<a href=#129 id=129 data-nosnippet>129</a>            res.resize(size <span class="kw">as </span>usize, <span class="number">0</span>);
-<a href=#130 id=130 data-nosnippet>130</a>            wasm_slice.read_slice(<span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
-<a href=#131 id=131 data-nosnippet>131</a>            <span class="prelude-val">Ok</span>(res)
-<a href=#132 id=132 data-nosnippet>132</a>        } <span class="kw">else </span>{
-<a href=#133 id=133 data-nosnippet>133</a>            <span class="macro">anyhow::bail!</span>(<span class="string">"Wrong offset: can't read buf"</span>)
-<a href=#134 id=134 data-nosnippet>134</a>        }
-<a href=#135 id=135 data-nosnippet>135</a>    }
-<a href=#136 id=136 data-nosnippet>136</a>
-<a href=#137 id=137 data-nosnippet>137</a>    <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>, memory: <span class="kw-2">&amp;</span>Memory, store: <span class="kw-2">&amp;</span><span class="kw">impl </span>AsStoreRef) -&gt; anyhow::Result&lt;u32&gt; {
-<a href=#138 id=138 data-nosnippet>138</a>        size(<span class="self">self</span>, memory, store)
-<a href=#139 id=139 data-nosnippet>139</a>    }
-<a href=#140 id=140 data-nosnippet>140</a>}
-<a href=#141 id=141 data-nosnippet>141</a>
-<a href=#142 id=142 data-nosnippet>142</a><span class="kw">impl </span>Write&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>AnyPtr {
-<a href=#143 id=143 data-nosnippet>143</a>    <span class="kw">fn </span>alloc(
-<a href=#144 id=144 data-nosnippet>144</a>        value: <span class="kw-2">&amp;</span>Vec&lt;u8&gt;,
-<a href=#145 id=145 data-nosnippet>145</a>        env: <span class="kw-2">&amp;</span>Env,
-<a href=#146 id=146 data-nosnippet>146</a>        store: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>AsStoreMut,
-<a href=#147 id=147 data-nosnippet>147</a>    ) -&gt; anyhow::Result&lt;Box&lt;AnyPtr&gt;&gt; {
-<a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span>new = <span class="macro">export_asr!</span>(fn_new, env);
-<a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">let </span>size = i32::try_from(value.len())<span class="question-mark">?</span>;
-<a href=#150 id=150 data-nosnippet>150</a>
-<a href=#151 id=151 data-nosnippet>151</a>        <span class="comment">// class id = 0
-<a href=#152 id=152 data-nosnippet>152</a>        </span><span class="kw">let </span>offset = u32::try_from(new.call(store, size, <span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-<a href=#153 id=153 data-nosnippet>153</a>        write_buffer(offset, value, env, store)<span class="question-mark">?</span>;
-<a href=#154 id=154 data-nosnippet>154</a>        <span class="prelude-val">Ok</span>(Box::new(AnyPtr::new(offset)))
-<a href=#155 id=155 data-nosnippet>155</a>    }
-<a href=#156 id=156 data-nosnippet>156</a>
-<a href=#157 id=157 data-nosnippet>157</a>    <span class="kw">fn </span>write(
-<a href=#158 id=158 data-nosnippet>158</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#159 id=159 data-nosnippet>159</a>        _value: <span class="kw-2">&amp;</span>Vec&lt;u8&gt;,
-<a href=#160 id=160 data-nosnippet>160</a>        _env: <span class="kw-2">&amp;</span>Env,
-<a href=#161 id=161 data-nosnippet>161</a>        _store: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>AsStoreMut,
-<a href=#162 id=162 data-nosnippet>162</a>    ) -&gt; anyhow::Result&lt;Box&lt;<span class="self">Self</span>&gt;&gt; {
-<a href=#163 id=163 data-nosnippet>163</a>        <span class="macro">todo!</span>()
-<a href=#164 id=164 data-nosnippet>164</a>        <span class="comment">/*
-<a href=#165 id=165 data-nosnippet>165</a>        let memory = match env.memory.get_ref() {
-<a href=#166 id=166 data-nosnippet>166</a>            Some(mem) =&gt; mem,
-<a href=#167 id=167 data-nosnippet>167</a>            _ =&gt; anyhow::bail!("Cannot get memory"),
-<a href=#168 id=168 data-nosnippet>168</a>        };
-<a href=#169 id=169 data-nosnippet>169</a>        let prev_size = size(self.offset(), memory)?;
-<a href=#170 id=170 data-nosnippet>170</a>        let new_size = u32::try_from(value.len())?;
-<a href=#171 id=171 data-nosnippet>171</a>        if prev_size == new_size {
-<a href=#172 id=172 data-nosnippet>172</a>            write_buffer(self.offset(), value, env)?;
-<a href=#173 id=173 data-nosnippet>173</a>            Ok(Box::new(*self))
-<a href=#174 id=174 data-nosnippet>174</a>        } else {
-<a href=#175 id=175 data-nosnippet>175</a>            // unpin old ptr
-<a href=#176 id=176 data-nosnippet>176</a>            let unpin = export_asr!(fn_pin, env);
-<a href=#177 id=177 data-nosnippet>177</a>            unpin.call(&amp;[Value::I32(self.offset().try_into()?)])?;
-<a href=#178 id=178 data-nosnippet>178</a>
-<a href=#179 id=179 data-nosnippet>179</a>            // collect
-<a href=#180 id=180 data-nosnippet>180</a>            let collect = export_asr!(fn_collect, env);
-<a href=#181 id=181 data-nosnippet>181</a>            collect.call(&amp;[])?;
-<a href=#182 id=182 data-nosnippet>182</a>
-<a href=#183 id=183 data-nosnippet>183</a>            // alloc with new size
-<a href=#184 id=184 data-nosnippet>184</a>            AnyPtr::alloc(value, env)
-<a href=#185 id=185 data-nosnippet>185</a>        }
-<a href=#186 id=186 data-nosnippet>186</a>        */
-<a href=#187 id=187 data-nosnippet>187</a>    </span>}
-<a href=#188 id=188 data-nosnippet>188</a>
-<a href=#189 id=189 data-nosnippet>189</a>    <span class="kw">fn </span>free(<span class="self">self</span>, _env: <span class="kw-2">&amp;</span>Env, _store: <span class="kw-2">&amp;mut </span>Store) -&gt; anyhow::Result&lt;()&gt; {
-<a href=#190 id=190 data-nosnippet>190</a>        <span class="macro">todo!</span>(<span class="string">"Release the memory from this any"</span>)
-<a href=#191 id=191 data-nosnippet>191</a>    }
-<a href=#192 id=192 data-nosnippet>192</a>}
-<a href=#193 id=193 data-nosnippet>193</a>
-<a href=#194 id=194 data-nosnippet>194</a><span class="kw">fn </span>write_buffer(
-<a href=#195 id=195 data-nosnippet>195</a>    offset: u32,
-<a href=#196 id=196 data-nosnippet>196</a>    value: <span class="kw-2">&amp;</span>[u8],
-<a href=#197 id=197 data-nosnippet>197</a>    env: <span class="kw-2">&amp;</span>Env,
-<a href=#198 id=198 data-nosnippet>198</a>    store: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>AsStoreMut,
-<a href=#199 id=199 data-nosnippet>199</a>) -&gt; anyhow::Result&lt;()&gt; {
-<a href=#200 id=200 data-nosnippet>200</a>    <span class="kw">let </span>memory = <span class="kw">match </span>env.memory.as_ref() {
-<a href=#201 id=201 data-nosnippet>201</a>        <span class="prelude-val">Some</span>(mem) =&gt; mem,
-<a href=#202 id=202 data-nosnippet>202</a>        <span class="kw">_ </span>=&gt; <span class="macro">anyhow::bail!</span>(<span class="string">"No Memory in env"</span>),
-<a href=#203 id=203 data-nosnippet>203</a>    };
-<a href=#204 id=204 data-nosnippet>204</a>    <span class="kw">let </span>mem_view = memory.view(store);
-<a href=#205 id=205 data-nosnippet>205</a>    <span class="kw">let </span>from = u64::from(offset);
-<a href=#206 id=206 data-nosnippet>206</a>    mem_view.write(from, value)<span class="question-mark">?</span>;
-<a href=#207 id=207 data-nosnippet>207</a>    <span class="prelude-val">Ok</span>(())
-<a href=#208 id=208 data-nosnippet>208</a>}
-<a href=#209 id=209 data-nosnippet>209</a>
-<a href=#210 id=210 data-nosnippet>210</a><span class="kw">fn </span>size(ptr: <span class="kw-2">&amp;</span>AnyPtr, memory: <span class="kw-2">&amp;</span>Memory, store: <span class="kw-2">&amp;</span><span class="kw">impl </span>AsStoreRef) -&gt; anyhow::Result&lt;u32&gt; {
-<a href=#211 id=211 data-nosnippet>211</a>    <span class="kw">let </span>memory_view = memory.view(<span class="kw-2">&amp;</span>store);
-<a href=#212 id=212 data-nosnippet>212</a>    <span class="kw">let </span>u32_size = size_of::&lt;u32&gt;() <span class="kw">as </span>u32;
-<a href=#213 id=213 data-nosnippet>213</a>    <span class="kw">let </span>ptr = ptr.<span class="number">0</span>.sub_offset(u32_size)<span class="question-mark">?</span>;
-<a href=#214 id=214 data-nosnippet>214</a>    <span class="kw">let </span>slice_len_buf = ptr.slice(<span class="kw-2">&amp;</span>memory_view, u32_size)<span class="question-mark">?</span>.read_to_vec()<span class="question-mark">?</span>;
-<a href=#215 id=215 data-nosnippet>215</a>    <span class="prelude-val">Ok</span>(u32::from_ne_bytes(slice_len_buf.try_into().map_err(
-<a href=#216 id=216 data-nosnippet>216</a>        |v| anyhow::Error::msg(<span class="macro">format!</span>(<span class="string">"Unable to convert vec: {:?} to &amp;[u8; 4]"</span>, v)),
-<a href=#217 id=217 data-nosnippet>217</a>    )<span class="question-mark">?</span>))
-<a href=#218 id=218 data-nosnippet>218</a>}
-<a href=#219 id=219 data-nosnippet>219</a>
-<a href=#220 id=220 data-nosnippet>220</a><span class="kw">fn </span>ptr_id(ptr: <span class="kw-2">&amp;</span>AnyPtr, memory: <span class="kw-2">&amp;</span>Memory, store: <span class="kw-2">&amp;</span>Store) -&gt; anyhow::Result&lt;u32&gt; {
-<a href=#221 id=221 data-nosnippet>221</a>    <span class="comment">// From https://www.assemblyscript.org/runtime.html#memory-layout
-<a href=#222 id=222 data-nosnippet>222</a>    // @ -8 (type: u32): unique id of the concrete class
-<a href=#223 id=223 data-nosnippet>223</a>    </span><span class="kw">let </span>memory_view = memory.view(<span class="kw-2">&amp;</span>store);
-<a href=#224 id=224 data-nosnippet>224</a>    <span class="kw">let </span>u32_size = size_of::&lt;u32&gt;() <span class="kw">as </span>u32;
-<a href=#225 id=225 data-nosnippet>225</a>    <span class="kw">let </span>ptr = ptr.<span class="number">0</span>.sub_offset(u32_size * <span class="number">2</span>)<span class="question-mark">?</span>;
-<a href=#226 id=226 data-nosnippet>226</a>    <span class="kw">let </span>slice_len_buf = ptr
-<a href=#227 id=227 data-nosnippet>227</a>        .slice(<span class="kw-2">&amp;</span>memory_view, mem::size_of::&lt;u32&gt;() <span class="kw">as </span>u32)<span class="question-mark">?
-<a href=#228 id=228 data-nosnippet>228</a>        </span>.read_to_vec()<span class="question-mark">?</span>;
-<a href=#229 id=229 data-nosnippet>229</a>    <span class="prelude-val">Ok</span>(u32::from_ne_bytes(slice_len_buf.try_into().map_err(
-<a href=#230 id=230 data-nosnippet>230</a>        |v| anyhow::Error::msg(<span class="macro">format!</span>(<span class="string">"Unable to convert vec: {:?} to &amp;[u8; 4]"</span>, v)),
-<a href=#231 id=231 data-nosnippet>231</a>    )<span class="question-mark">?</span>))
-<a href=#232 id=232 data-nosnippet>232</a>}
-<a href=#233 id=233 data-nosnippet>233</a>
-<a href=#234 id=234 data-nosnippet>234</a><span class="kw">fn </span>set_id(offset: u32, id: u32, _env: <span class="kw-2">&amp;</span>Env, memory: <span class="kw-2">&amp;</span>Memory, store: <span class="kw-2">&amp;</span>Store) -&gt; anyhow::Result&lt;()&gt; {
-<a href=#235 id=235 data-nosnippet>235</a>    <span class="kw">if </span>offset &lt; <span class="number">8 </span>{
-<a href=#236 id=236 data-nosnippet>236</a>        <span class="macro">anyhow::bail!</span>(<span class="string">"Wrong offset: less than 8"</span>)
-<a href=#237 id=237 data-nosnippet>237</a>    }
-<a href=#238 id=238 data-nosnippet>238</a>
-<a href=#239 id=239 data-nosnippet>239</a>    <span class="kw">let </span>mem_view = memory.view(store);
-<a href=#240 id=240 data-nosnippet>240</a>    <span class="kw">let </span>u32_size = size_of::&lt;u32&gt;() <span class="kw">as </span>u32;
-<a href=#241 id=241 data-nosnippet>241</a>    <span class="kw">let </span>from = u64::from(offset - (u32_size * <span class="number">2</span>));
-<a href=#242 id=242 data-nosnippet>242</a>    <span class="kw">let </span>to_write = id.to_ne_bytes();
-<a href=#243 id=243 data-nosnippet>243</a>    mem_view.write(from, <span class="kw-2">&amp;</span>to_write[..])<span class="question-mark">?</span>;
-<a href=#244 id=244 data-nosnippet>244</a>    <span class="prelude-val">Ok</span>(())
-<a href=#245 id=245 data-nosnippet>245</a>}</code></pre></div></section></main></body></html>
+<a href=#128 id=128 data-nosnippet>128</a>            check_guest_bounds(<span class="kw-2">&amp;</span>memory_view, <span class="self">self</span>.offset(), u64::from(size))<span class="question-mark">?</span>;
+<a href=#129 id=129 data-nosnippet>129</a>            <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(size <span class="kw">as </span>usize * <span class="number">2</span>);
+<a href=#130 id=130 data-nosnippet>130</a>            res.resize(size <span class="kw">as </span>usize, <span class="number">0</span>);
+<a href=#131 id=131 data-nosnippet>131</a>            wasm_slice.read_slice(<span class="kw-2">&amp;mut </span>res)<span class="question-mark">?</span>;
+<a href=#132 id=132 data-nosnippet>132</a>            <span class="prelude-val">Ok</span>(res)
+<a href=#133 id=133 data-nosnippet>133</a>        } <span class="kw">else </span>{
+<a href=#134 id=134 data-nosnippet>134</a>            <span class="macro">anyhow::bail!</span>(<span class="string">"Wrong offset: can't read buf"</span>)
+<a href=#135 id=135 data-nosnippet>135</a>        }
+<a href=#136 id=136 data-nosnippet>136</a>    }
+<a href=#137 id=137 data-nosnippet>137</a>
+<a href=#138 id=138 data-nosnippet>138</a>    <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>, memory: <span class="kw-2">&amp;</span>Memory, store: <span class="kw-2">&amp;</span><span class="kw">impl </span>AsStoreRef) -&gt; anyhow::Result&lt;u32&gt; {
+<a href=#139 id=139 data-nosnippet>139</a>        size(<span class="self">self</span>, memory, store)
+<a href=#140 id=140 data-nosnippet>140</a>    }
+<a href=#141 id=141 data-nosnippet>141</a>}
+<a href=#142 id=142 data-nosnippet>142</a>
+<a href=#143 id=143 data-nosnippet>143</a><span class="kw">impl </span>Write&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>AnyPtr {
+<a href=#144 id=144 data-nosnippet>144</a>    <span class="kw">fn </span>alloc(
+<a href=#145 id=145 data-nosnippet>145</a>        value: <span class="kw-2">&amp;</span>Vec&lt;u8&gt;,
+<a href=#146 id=146 data-nosnippet>146</a>        env: <span class="kw-2">&amp;</span>Env,
+<a href=#147 id=147 data-nosnippet>147</a>        store: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>AsStoreMut,
+<a href=#148 id=148 data-nosnippet>148</a>    ) -&gt; anyhow::Result&lt;Box&lt;AnyPtr&gt;&gt; {
+<a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">let </span>new = <span class="macro">export_asr!</span>(fn_new, env);
+<a href=#150 id=150 data-nosnippet>150</a>        <span class="kw">let </span>size = i32::try_from(value.len())<span class="question-mark">?</span>;
+<a href=#151 id=151 data-nosnippet>151</a>
+<a href=#152 id=152 data-nosnippet>152</a>        <span class="comment">// class id = 0
+<a href=#153 id=153 data-nosnippet>153</a>        </span><span class="kw">let </span>offset = u32::try_from(new.call(store, size, <span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+<a href=#154 id=154 data-nosnippet>154</a>        write_buffer(offset, value, env, store)<span class="question-mark">?</span>;
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="prelude-val">Ok</span>(Box::new(AnyPtr::new(offset)))
+<a href=#156 id=156 data-nosnippet>156</a>    }
+<a href=#157 id=157 data-nosnippet>157</a>
+<a href=#158 id=158 data-nosnippet>158</a>    <span class="kw">fn </span>write(
+<a href=#159 id=159 data-nosnippet>159</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#160 id=160 data-nosnippet>160</a>        _value: <span class="kw-2">&amp;</span>Vec&lt;u8&gt;,
+<a href=#161 id=161 data-nosnippet>161</a>        _env: <span class="kw-2">&amp;</span>Env,
+<a href=#162 id=162 data-nosnippet>162</a>        _store: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>AsStoreMut,
+<a href=#163 id=163 data-nosnippet>163</a>    ) -&gt; anyhow::Result&lt;Box&lt;<span class="self">Self</span>&gt;&gt; {
+<a href=#164 id=164 data-nosnippet>164</a>        <span class="macro">todo!</span>()
+<a href=#165 id=165 data-nosnippet>165</a>        <span class="comment">/*
+<a href=#166 id=166 data-nosnippet>166</a>        let memory = match env.memory.get_ref() {
+<a href=#167 id=167 data-nosnippet>167</a>            Some(mem) =&gt; mem,
+<a href=#168 id=168 data-nosnippet>168</a>            _ =&gt; anyhow::bail!("Cannot get memory"),
+<a href=#169 id=169 data-nosnippet>169</a>        };
+<a href=#170 id=170 data-nosnippet>170</a>        let prev_size = size(self.offset(), memory)?;
+<a href=#171 id=171 data-nosnippet>171</a>        let new_size = u32::try_from(value.len())?;
+<a href=#172 id=172 data-nosnippet>172</a>        if prev_size == new_size {
+<a href=#173 id=173 data-nosnippet>173</a>            write_buffer(self.offset(), value, env)?;
+<a href=#174 id=174 data-nosnippet>174</a>            Ok(Box::new(*self))
+<a href=#175 id=175 data-nosnippet>175</a>        } else {
+<a href=#176 id=176 data-nosnippet>176</a>            // unpin old ptr
+<a href=#177 id=177 data-nosnippet>177</a>            let unpin = export_asr!(fn_pin, env);
+<a href=#178 id=178 data-nosnippet>178</a>            unpin.call(&amp;[Value::I32(self.offset().try_into()?)])?;
+<a href=#179 id=179 data-nosnippet>179</a>
+<a href=#180 id=180 data-nosnippet>180</a>            // collect
+<a href=#181 id=181 data-nosnippet>181</a>            let collect = export_asr!(fn_collect, env);
+<a href=#182 id=182 data-nosnippet>182</a>            collect.call(&amp;[])?;
+<a href=#183 id=183 data-nosnippet>183</a>
+<a href=#184 id=184 data-nosnippet>184</a>            // alloc with new size
+<a href=#185 id=185 data-nosnippet>185</a>            AnyPtr::alloc(value, env)
+<a href=#186 id=186 data-nosnippet>186</a>        }
+<a href=#187 id=187 data-nosnippet>187</a>        */
+<a href=#188 id=188 data-nosnippet>188</a>    </span>}
+<a href=#189 id=189 data-nosnippet>189</a>
+<a href=#190 id=190 data-nosnippet>190</a>    <span class="kw">fn </span>free(<span class="self">self</span>, _env: <span class="kw-2">&amp;</span>Env, _store: <span class="kw-2">&amp;mut </span>Store) -&gt; anyhow::Result&lt;()&gt; {
+<a href=#191 id=191 data-nosnippet>191</a>        <span class="macro">todo!</span>(<span class="string">"Release the memory from this any"</span>)
+<a href=#192 id=192 data-nosnippet>192</a>    }
+<a href=#193 id=193 data-nosnippet>193</a>}
+<a href=#194 id=194 data-nosnippet>194</a>
+<a href=#195 id=195 data-nosnippet>195</a><span class="kw">fn </span>write_buffer(
+<a href=#196 id=196 data-nosnippet>196</a>    offset: u32,
+<a href=#197 id=197 data-nosnippet>197</a>    value: <span class="kw-2">&amp;</span>[u8],
+<a href=#198 id=198 data-nosnippet>198</a>    env: <span class="kw-2">&amp;</span>Env,
+<a href=#199 id=199 data-nosnippet>199</a>    store: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>AsStoreMut,
+<a href=#200 id=200 data-nosnippet>200</a>) -&gt; anyhow::Result&lt;()&gt; {
+<a href=#201 id=201 data-nosnippet>201</a>    <span class="kw">let </span>memory = <span class="kw">match </span>env.memory.as_ref() {
+<a href=#202 id=202 data-nosnippet>202</a>        <span class="prelude-val">Some</span>(mem) =&gt; mem,
+<a href=#203 id=203 data-nosnippet>203</a>        <span class="kw">_ </span>=&gt; <span class="macro">anyhow::bail!</span>(<span class="string">"No Memory in env"</span>),
+<a href=#204 id=204 data-nosnippet>204</a>    };
+<a href=#205 id=205 data-nosnippet>205</a>    <span class="kw">let </span>mem_view = memory.view(store);
+<a href=#206 id=206 data-nosnippet>206</a>    <span class="kw">let </span>from = u64::from(offset);
+<a href=#207 id=207 data-nosnippet>207</a>    mem_view.write(from, value)<span class="question-mark">?</span>;
+<a href=#208 id=208 data-nosnippet>208</a>    <span class="prelude-val">Ok</span>(())
+<a href=#209 id=209 data-nosnippet>209</a>}
+<a href=#210 id=210 data-nosnippet>210</a>
+<a href=#211 id=211 data-nosnippet>211</a><span class="kw">fn </span>size(ptr: <span class="kw-2">&amp;</span>AnyPtr, memory: <span class="kw-2">&amp;</span>Memory, store: <span class="kw-2">&amp;</span><span class="kw">impl </span>AsStoreRef) -&gt; anyhow::Result&lt;u32&gt; {
+<a href=#212 id=212 data-nosnippet>212</a>    <span class="kw">let </span>memory_view = memory.view(<span class="kw-2">&amp;</span>store);
+<a href=#213 id=213 data-nosnippet>213</a>    <span class="kw">let </span>u32_size = size_of::&lt;u32&gt;() <span class="kw">as </span>u32;
+<a href=#214 id=214 data-nosnippet>214</a>    <span class="kw">let </span>ptr = ptr.<span class="number">0</span>.sub_offset(u32_size)<span class="question-mark">?</span>;
+<a href=#215 id=215 data-nosnippet>215</a>    <span class="kw">let </span>slice_len_buf = ptr.slice(<span class="kw-2">&amp;</span>memory_view, u32_size)<span class="question-mark">?</span>.read_to_vec()<span class="question-mark">?</span>;
+<a href=#216 id=216 data-nosnippet>216</a>    <span class="prelude-val">Ok</span>(u32::from_ne_bytes(slice_len_buf.try_into().map_err(
+<a href=#217 id=217 data-nosnippet>217</a>        |v| anyhow::Error::msg(<span class="macro">format!</span>(<span class="string">"Unable to convert vec: {:?} to &amp;[u8; 4]"</span>, v)),
+<a href=#218 id=218 data-nosnippet>218</a>    )<span class="question-mark">?</span>))
+<a href=#219 id=219 data-nosnippet>219</a>}
+<a href=#220 id=220 data-nosnippet>220</a>
+<a href=#221 id=221 data-nosnippet>221</a><span class="kw">fn </span>ptr_id(ptr: <span class="kw-2">&amp;</span>AnyPtr, memory: <span class="kw-2">&amp;</span>Memory, store: <span class="kw-2">&amp;</span>Store) -&gt; anyhow::Result&lt;u32&gt; {
+<a href=#222 id=222 data-nosnippet>222</a>    <span class="comment">// From https://www.assemblyscript.org/runtime.html#memory-layout
+<a href=#223 id=223 data-nosnippet>223</a>    // @ -8 (type: u32): unique id of the concrete class
+<a href=#224 id=224 data-nosnippet>224</a>    </span><span class="kw">let </span>memory_view = memory.view(<span class="kw-2">&amp;</span>store);
+<a href=#225 id=225 data-nosnippet>225</a>    <span class="kw">let </span>u32_size = size_of::&lt;u32&gt;() <span class="kw">as </span>u32;
+<a href=#226 id=226 data-nosnippet>226</a>    <span class="kw">let </span>ptr = ptr.<span class="number">0</span>.sub_offset(u32_size * <span class="number">2</span>)<span class="question-mark">?</span>;
+<a href=#227 id=227 data-nosnippet>227</a>    <span class="kw">let </span>slice_len_buf = ptr
+<a href=#228 id=228 data-nosnippet>228</a>        .slice(<span class="kw-2">&amp;</span>memory_view, mem::size_of::&lt;u32&gt;() <span class="kw">as </span>u32)<span class="question-mark">?
+<a href=#229 id=229 data-nosnippet>229</a>        </span>.read_to_vec()<span class="question-mark">?</span>;
+<a href=#230 id=230 data-nosnippet>230</a>    <span class="prelude-val">Ok</span>(u32::from_ne_bytes(slice_len_buf.try_into().map_err(
+<a href=#231 id=231 data-nosnippet>231</a>        |v| anyhow::Error::msg(<span class="macro">format!</span>(<span class="string">"Unable to convert vec: {:?} to &amp;[u8; 4]"</span>, v)),
+<a href=#232 id=232 data-nosnippet>232</a>    )<span class="question-mark">?</span>))
+<a href=#233 id=233 data-nosnippet>233</a>}
+<a href=#234 id=234 data-nosnippet>234</a>
+<a href=#235 id=235 data-nosnippet>235</a><span class="kw">fn </span>set_id(offset: u32, id: u32, _env: <span class="kw-2">&amp;</span>Env, memory: <span class="kw-2">&amp;</span>Memory, store: <span class="kw-2">&amp;</span>Store) -&gt; anyhow::Result&lt;()&gt; {
+<a href=#236 id=236 data-nosnippet>236</a>    <span class="kw">if </span>offset &lt; <span class="number">8 </span>{
+<a href=#237 id=237 data-nosnippet>237</a>        <span class="macro">anyhow::bail!</span>(<span class="string">"Wrong offset: less than 8"</span>)
+<a href=#238 id=238 data-nosnippet>238</a>    }
+<a href=#239 id=239 data-nosnippet>239</a>
+<a href=#240 id=240 data-nosnippet>240</a>    <span class="kw">let </span>mem_view = memory.view(store);
+<a href=#241 id=241 data-nosnippet>241</a>    <span class="kw">let </span>u32_size = size_of::&lt;u32&gt;() <span class="kw">as </span>u32;
+<a href=#242 id=242 data-nosnippet>242</a>    <span class="kw">let </span>from = u64::from(offset - (u32_size * <span class="number">2</span>));
+<a href=#243 id=243 data-nosnippet>243</a>    <span class="kw">let </span>to_write = id.to_ne_bytes();
+<a href=#244 id=244 data-nosnippet>244</a>    mem_view.write(from, <span class="kw-2">&amp;</span>to_write[..])<span class="question-mark">?</span>;
+<a href=#245 id=245 data-nosnippet>245</a>    <span class="prelude-val">Ok</span>(())
+<a href=#246 id=246 data-nosnippet>246</a>}</code></pre></div></section></main></body></html>
